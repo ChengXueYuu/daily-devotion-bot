@@ -1,25 +1,25 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
-import re
 import xml.etree.ElementTree as ET
 
 def get_taiwan_date():
     tw_tz = timezone(timedelta(hours=8))
     return datetime.now(tw_tz)
 
-def get_youtube_from_playlist():
+def get_youtube_for_date(date_str):
     playlist_id = "PLfLZDCstmTXdFexWzM6X9z94zFdmUe8GC"
     rss_url = "https://www.youtube.com/feeds/videos.xml?playlist_id=" + playlist_id
     try:
         response = requests.get(rss_url, timeout=30)
         root = ET.fromstring(response.content)
         ns = {'atom': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
-        entry = root.find('atom:entry', ns)
-        if entry is not None:
-            video_id = entry.find('yt:videoId', ns)
-            if video_id is not None:
-                return "https://youtu.be/" + video_id.text
+        for entry in root.findall('atom:entry', ns):
+            title = entry.find('atom:title', ns)
+            if title is not None and date_str in title.text:
+                video_id = entry.find('yt:videoId', ns)
+                if video_id is not None:
+                    return "https://youtu.be/" + video_id.text
     except Exception as e:
         print("YouTube RSS error: " + str(e))
     return ""
@@ -37,7 +37,7 @@ def get_devotion_info(date):
         title_tag = soup.find('title')
         if title_tag and '|' in title_tag.get_text():
             scripture = title_tag.get_text().split('|')[0].strip()
-        youtube_url = get_youtube_from_playlist()
+        youtube_url = get_youtube_for_date(date_str)
         return {'date': date.strftime("%Y-%m-%d"), 'scripture': scripture or "請點擊連結查看", 'web_url': url, 'youtube_url': youtube_url}
     except Exception as e:
         print("Error: " + str(e))
