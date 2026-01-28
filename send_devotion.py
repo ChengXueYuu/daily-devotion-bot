@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import re
 import urllib3
@@ -28,34 +27,34 @@ def get_youtube_for_date(date_str):
                 
                 if date_str in title:
                     yt_url = "https://youtu.be/" + video_id
-                    return {'url': yt_url, 'title': title}
+                    
+                    scripture_match = re.search(r'【每日靈糧】(.+?)｜', title)
+                    scripture = ""
+                    if scripture_match:
+                        scripture = scripture_match.group(1).strip()
+                    
+                    pastor_match = re.search(r'｜(.+?)_\d{8}', title)
+                    pastor = ""
+                    if pastor_match:
+                        pastor = pastor_match.group(1).strip()
+                    
+                    return {'url': yt_url, 'title': title, 'scripture': scripture, 'pastor': pastor}
     except Exception as e:
         print("YouTube RSS error: " + str(e))
-    return {'url': '', 'title': ''}
+    return {'url': '', 'title': '', 'scripture': '', 'pastor': ''}
 
 def get_devotion_info(date):
     date_str = date.strftime("%Y%m%d")
     base_url = "https://www.breadoflife.taipei/type_devotional/"
     url = base_url + date_str + "/"
-    scripture = ""
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=30, verify=False)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
-        title_tag = soup.find('title')
-        if title_tag and '|' in title_tag.get_text():
-            scripture = title_tag.get_text().split('|')[0].strip()
-    except Exception as e:
-        print("Website error: " + str(e))
     
     youtube_info = get_youtube_for_date(date_str)
     return {
         'date': date.strftime("%Y-%m-%d"),
-        'scripture': scripture or "請點擊連結查看",
+        'scripture': youtube_info['scripture'],
+        'pastor': youtube_info['pastor'],
         'web_url': url,
-        'youtube_url': youtube_info['url'],
-        'youtube_title': youtube_info['title']
+        'youtube_url': youtube_info['url']
     }
 
 def send_line_message(message, token, target_id):
@@ -74,14 +73,13 @@ def main():
     
     print("Date: " + info['date'])
     print("Scripture: " + info['scripture'])
+    print("Pastor: " + info['pastor'])
     print("URL: " + info['web_url'])
     print("YouTube: " + info['youtube_url'])
-    print("YouTube Title: " + info['youtube_title'])
     
-    # 組合溫暖的訊息
     message = "🌅 早安，願神的話語成為今天的力量！\n\n"
-    message = message + "📖 " + info['date'] + "\n"
-    message = message + "📝 " + info['youtube_title'] + "\n\n"
+    message = message + "📖 " + info['date'] + " | " + info['scripture'] + "\n"
+    message = message + "🎤 " + info['pastor'] + "\n\n"
     message = message + "🔗 靈修網站：\n" + info['web_url']
     if info['youtube_url']:
         message = message + "\n\n🎬 影音靈修：\n" + info['youtube_url']
