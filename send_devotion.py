@@ -42,7 +42,7 @@ def main():
     token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
     target_id = os.environ.get('LINE_TARGET_ID')
     
-    today = get_taiwan_date()
+    today = datetime(2026, 1, 27, tzinfo=timezone(timedelta(hours=8)))
     info = get_devotion_info(today)
     
     message = f"📖 {info['date']} | {info['scripture']}\n🔗 {info['web_url']}"
