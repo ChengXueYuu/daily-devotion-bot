@@ -2,55 +2,34 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import re
+import xml.etree.ElementTree as ET
 
 def get_taiwan_date():
     tw_tz = timezone(timedelta(hours=8))
     return datetime.now(tw_tz)
 
-def get_devotion_info(date):
-    date_str = date.strftime("%Y%m%d")
-    url = f"https://www.breadoflife.taipei/type_devotional/{date_str}/"
+def get_youtube_from_playlist():
+    """從播放清單 RSS 取得最新影片"""
+    playlist_id = "PLfLZDCstmTXdFexWzM6X9z94zFdmUe8GC"
+    rss_url = f"https://www.youtube.com/feeds/videos.xml?playlist_id={playlist_id}"
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=30)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'html.parser')
+        response = requests.get(rss_url, timeout=30)
+        root = ET.fromstring(response.content)
         
-        scripture = ""
-        title_tag = soup.find('title')
-        if title_tag and '|' in title_tag.get_text():
-            scripture = title_tag.get_text().split('|')[0].strip()
+        # 找到最新的影片（第一個 entry）
+        ns = {'atom': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
+        entry = root.find('atom:entry', ns)
         
-        youtube_url = ""
-        match = re.search(r'youtube\.com/embed/([a-zA-Z0-9_-]+)', response.text)
-        if match:
-            youtube_url = f"https://youtu.be/{match.group(1)}"
-        
-        return {'date': date.strftime("%Y-%m-%d"), 'scripture': scripture or "請點擊連結查看", 'web_url': url, 'youtube_url': youtube_url}
-    except:
-        return {'date': date.strftime("%Y-%m-%d"), 'scripture': "請點擊連結查看", 'web_url': url, 'youtube_url': ""}
-
-def send_line_message(message, token, target_id):
-    url = "https://api.line.me/v2/bot/message/push"
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
-    data = {"to": target_id, "messages": [{"type": "text", "text": message}]}
-    requests.post(url, headers=headers, json=data)
-
-def main():
-    import os
-    token = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
-    target_id = os.environ.get('LINE_TARGET_ID')
+        if entry is not None:
+            video_id = entry.find('yt:videoId', ns)
+            if video_id is not None:
+                return f"https://youtu.be/{video_id.text}"
+    except Exception as e:
+        print(f"YouTube RSS 錯誤: {e}")
     
-    today = datetime(2026, 1, 27, tzinfo=timezone(timedelta(hours=8)))
-    info = get_devotion_info(today)
-    
-    message = f"📖 {info['date']} | {info['scripture']}\n🔗 {info['web_url']}"
-    if info['youtube_url']:
-        message += f"\n🎬 {info['youtube_url']}"
-    
-    send_line_message(message, token, target_id)
-    print("✅ 發送成功！")
+    return ""
 
-if __name__ == "__main__":
-    main()
+def get_devotion_info(date):
+    date_str = date.strftime("%Y%m%d")
+    url = f"https://www.breadoflif
