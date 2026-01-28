@@ -13,13 +13,19 @@ def get_youtube_for_date(date_str):
     try:
         response = requests.get(rss_url, timeout=30)
         root = ET.fromstring(response.content)
-        ns = {'atom': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
-        for entry in root.findall('atom:entry', ns):
-            title = entry.find('atom:title', ns)
-            if title is not None and date_str in title.text:
-                video_id = entry.find('yt:videoId', ns)
-                if video_id is not None:
-                    return "https://youtu.be/" + video_id.text
+        
+        atom = "{http://www.w3.org/2005/Atom}"
+        yt = "{http://www.youtube.com/xml/schemas/2015}"
+        
+        for entry in root.findall(atom + "entry"):
+            title_elem = entry.find(atom + "title")
+            video_id_elem = entry.find(yt + "videoId")
+            
+            if title_elem is not None:
+                print("Found title: " + title_elem.text)
+                if date_str in title_elem.text:
+                    if video_id_elem is not None:
+                        return "https://youtu.be/" + video_id_elem.text
     except Exception as e:
         print("YouTube RSS error: " + str(e))
     return ""
