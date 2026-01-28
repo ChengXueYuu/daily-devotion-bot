@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
-import xml.etree.ElementTree as ET
+import re
 
 def get_taiwan_date():
     tw_tz = timezone(timedelta(hours=8))
@@ -12,20 +12,24 @@ def get_youtube_for_date(date_str):
     rss_url = "https://www.youtube.com/feeds/videos.xml?playlist_id=" + playlist_id
     try:
         response = requests.get(rss_url, timeout=30)
-        root = ET.fromstring(response.content)
+        content = response.text
+        print("RSS length: " + str(len(content)))
         
-        atom = "{http://www.w3.org/2005/Atom}"
-        yt = "{http://www.youtube.com/xml/schemas/2015}"
+        entries = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
+        print("Found entries: " + str(len(entries)))
         
-        for entry in root.findall(atom + "entry"):
-            title_elem = entry.find(atom + "title")
-            video_id_elem = entry.find(yt + "videoId")
+        for entry in entries:
+            title_match = re.search(r'<title>(.*?)</title>', entry)
+            video_id_match = re.search(r'<yt:videoId>(.*?)</yt:videoId>', entry)
             
-            if title_elem is not None:
-                print("Found title: " + title_elem.text)
-                if date_str in title_elem.text:
-                    if video_id_elem is not None:
-                        return "https://youtu.be/" + video_id_elem.text
+            if title_match and video_id_match:
+                title = title_match.group(1)
+                video_id = video_id_match.group(1)
+                print("Title: " + title)
+                print("Video ID: " + video_id)
+                
+                if date_str in title:
+                    return "https://youtu.be/" + video_id
     except Exception as e:
         print("YouTube RSS error: " + str(e))
     return ""
