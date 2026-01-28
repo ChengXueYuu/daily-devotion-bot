@@ -15,10 +15,8 @@ def get_youtube_for_date(date_str):
     try:
         response = requests.get(rss_url, timeout=30)
         content = response.text
-        print("RSS length: " + str(len(content)))
         
         entries = re.findall(r'<entry>(.*?)</entry>', content, re.DOTALL)
-        print("Found entries: " + str(len(entries)))
         
         for entry in entries:
             title_match = re.search(r'<title>(.*?)</title>', entry)
@@ -27,14 +25,13 @@ def get_youtube_for_date(date_str):
             if title_match and video_id_match:
                 title = title_match.group(1)
                 video_id = video_id_match.group(1)
-                print("Title: " + title)
                 
                 if date_str in title:
-                    print("Match found!")
-                    return "https://youtu.be/" + video_id
+                    yt_url = "https://youtu.be/" + video_id
+                    return {'url': yt_url, 'title': title}
     except Exception as e:
         print("YouTube RSS error: " + str(e))
-    return ""
+    return {'url': '', 'title': ''}
 
 def get_devotion_info(date):
     date_str = date.strftime("%Y%m%d")
@@ -52,8 +49,14 @@ def get_devotion_info(date):
     except Exception as e:
         print("Website error: " + str(e))
     
-    youtube_url = get_youtube_for_date(date_str)
-    return {'date': date.strftime("%Y-%m-%d"), 'scripture': scripture or "請點擊連結查看", 'web_url': url, 'youtube_url': youtube_url}
+    youtube_info = get_youtube_for_date(date_str)
+    return {
+        'date': date.strftime("%Y-%m-%d"),
+        'scripture': scripture or "請點擊連結查看",
+        'web_url': url,
+        'youtube_url': youtube_info['url'],
+        'youtube_title': youtube_info['title']
+    }
 
 def send_line_message(message, token, target_id):
     api_url = "https://api.line.me/v2/bot/message/push"
@@ -68,13 +71,21 @@ def main():
     target_id = os.environ.get('LINE_TARGET_ID')
     today = get_taiwan_date()
     info = get_devotion_info(today)
+    
     print("Date: " + info['date'])
     print("Scripture: " + info['scripture'])
     print("URL: " + info['web_url'])
     print("YouTube: " + info['youtube_url'])
-    message = "📖 " + info['date'] + " | " + info['scripture'] + "\n🔗 " + info['web_url']
+    print("YouTube Title: " + info['youtube_title'])
+    
+    # 組合溫暖的訊息
+    message = "🌅 早安，願神的話語成為今天的力量！\n\n"
+    message = message + "📖 " + info['date'] + "\n"
+    message = message + "📝 " + info['youtube_title'] + "\n\n"
+    message = message + "🔗 靈修網站：\n" + info['web_url']
     if info['youtube_url']:
-        message = message + "\n\n🎬 " + info['youtube_url']
+        message = message + "\n\n🎬 影音靈修：\n" + info['youtube_url']
+    
     send_line_message(message, token, target_id)
     print("Done!")
 
