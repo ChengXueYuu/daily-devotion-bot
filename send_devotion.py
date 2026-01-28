@@ -74,7 +74,7 @@ def main():
     print("YouTube: " + info['youtube_url'])
     message = "📖 " + info['date'] + " | " + info['scripture'] + "\n🔗 " + info['web_url']
     if info['youtube_url']:
-        message = message + "\n🎬 " + info['youtube_url']
+        message = message + "\n\n🎬 " + info['youtube_url']
     send_line_message(message, token, target_id)
     print("Done!")
 
